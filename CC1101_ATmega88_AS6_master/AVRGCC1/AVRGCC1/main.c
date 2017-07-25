@@ -80,8 +80,12 @@ int	gUartRcvData=-1;
 u8 rx_char[40];
 u8 uartData;
 volatile int testtest=0;
+volatile int count32MSec=0;
+volatile int count1Sec=0;
 int uart_rx_index=0;
 int uart_rx_length=0;
+int ledTest=0;
+int waitCtrSound=-1;
 
 
 
@@ -231,7 +235,7 @@ void hw_setup(void)
 	DDRB=0x00;
 
 	/*pull_up*/
-	//PORTC = (1<<PC6) |(1<<PC0) | (1<<PC1);
+	//PORTC = (1<<PC4) |(1<<PC4);
 	//PORTD = 0xf7; 
 
 
@@ -314,11 +318,51 @@ void sleep_set(u8 alarm,u8 bo)
 
 ISR(TIMER0_COMPA_vect)	//ƒ^ƒCƒ}Š„‚èž‚Ý
 {
+	if(count32MSec > -1)
+	{
+		//PORTC |= (1 << 4);
+		count32MSec=-1;
+	}
+	else
+	{
+		//PORTC &= ~(1 << 4);
+		count32MSec=0;
+	}
 	
 	
 	
+	if(count1Sec++ > 31)	
+	{
+		if(ledTest==0)
+		{
+			//PORTC |= (1 << 4);
+			ledTest++;
+		}
+		else
+		{
+			//PORTC &= ~(1 << 4);
+			ledTest=0;
+		}
+		
+		
+		if(waitCtrSound > -1)
+		{	
+			waitCtrSound++;
+			
+			if(waitCtrSound > 5)
+			{
+				waitCtrSound = -1;
+			}
+		}
+		
+		
+		
+		
+		
+		count1Sec=0;
+	}
 	
-
+	
 }
 
 
@@ -335,9 +379,74 @@ void timer_init(void)
 }
 
 
+void SoundPlay(u8 data)
+{
+	int i=0;
+	u8 outData = 0;
+	
+	
+	
+	
+	PORTC |= (1 << 4);
+	_delay_us(10);
+	PORTC |= (1 << 5);
+	_delay_us(10);
+
+	PORTC &= ~(1 << 4);
+	_delay_us(10);
+	PORTC &= ~(1 << 5);
+	_delay_us(10);
+
+	
+	for(i=0;i<8;i++)
+	{
+		outData = (0x01 & (data >> i));
+		
+		if(outData & 0x01)
+		{
+			PORTC |= (1 << 4);
+		}
+		else
+		{
+			PORTC &= ~(1 << 4);
+		}
+		_delay_us(10);		
+		PORTC |= (1 << 5);
+		_delay_us(10);
+		PORTC &= ~(1 << 5);
+		_delay_us(10);
+	}
+	
+	
+	_delay_us(10);
+	PORTC |= (1 << 5);
+	_delay_us(10);
+	PORTC |= (1 << 4);
+	_delay_us(10);
+
+}
+
+
+
+u8 get_R_busy(void)
+{
+	return (PORTB & 0x01) ? true : false;
+}
+
+
+
+u8 get_L_busy(void)
+{
+	return (PORTB & 0x02) ? true : false;
+}
+
+
+
+
+
 int main(void)
 {
-
+	u8 soundNumber=0;
 
 	hw_setup();
 	inituart();
@@ -352,9 +461,22 @@ int main(void)
 	
 	
 
+	waitCtrSound=0;
 	
     while(1)
     {
+		
+		if(get_R_busy()==false && get_L_busy()==false && waitCtrSound == -1)
+		{
+			waitCtrSound=0;
+			
+			SoundPlay(soundNumber++);
+			_delay_ms(100);
+		}
+
+		
+		
+		
 		
 		if(gUartRcvData > 0)
 		{
