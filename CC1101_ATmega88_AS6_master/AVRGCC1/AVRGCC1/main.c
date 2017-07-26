@@ -86,6 +86,7 @@ int uart_rx_index=0;
 int uart_rx_length=0;
 int ledTest=0;
 int waitCtrSound=-1;
+u8 gSoundPlay = false;
 
 
 
@@ -217,7 +218,8 @@ void inituart(void)
 	UCSR0C = 0x06; // 8bit, 1 stop bit, no parity
 	UBRR0H = 0x00; 
 	//UBRR0L = 0x33;	// Baudrate 9600 for master clk=4MHz
-	UBRR0L = 0x67;		// Baudrate 9600 for master clk=8MHz
+	//UBRR0L = 0x67;		// Baudrate 9600 for master clk=8MHz
+	UBRR0L = 0xcf;		// Baudrate 4800 for master clk=8MHz
 	UCSR0B = 0x98; // rx / tx enable , rx int enable 0x98
 }
 
@@ -232,7 +234,7 @@ void hw_setup(void)
 
     DDRC=0x30;      
 	DDRD=0x00;
-	DDRB=0x00;
+	DDRB=0x04;
 
 	/*pull_up*/
 	//PORTC = (1<<PC4) |(1<<PC4);
@@ -260,11 +262,13 @@ ISR(USART_RX_vect)
 
 	rx_char[uart_rx_index++] = UDR0;
 
-	if(rx_char[uart_rx_index]==0x0d)
+	//if(rx_char[uart_rx_index]==0x0d)
+	if(rx_char[uart_rx_index - 1]==0xec)
 	{
-		uart_rx_length = uart_rx_index;
-		gUartRcvData = 0;	
+		uart_rx_length = uart_rx_index - 1;
+		//gUartRcvData = 0;	
 		uart_rx_index = 0;
+		gSoundPlay=true;
 	}
 }
 
@@ -293,6 +297,7 @@ ISR(INT0_vect)
 
 
 
+#if 0
 
 
 void sleep_set(u8 alarm,u8 bo)
@@ -312,8 +317,7 @@ void sleep_set(u8 alarm,u8 bo)
 	WDTCSR |= (1 << WDIE);
 }
 
-
-
+#endif
 
 
 ISR(TIMER0_COMPA_vect)	//ƒ^ƒCƒ}Š„‚èž‚Ý
@@ -467,24 +471,37 @@ int main(void)
 	
     while(1)
     {
-		
-		if(get_R_busy()==false && get_L_busy()==false)
+		#if 1
+
+
+		if(gSoundPlay == 0x01)
 		{
+			#if 1
+			while(1)
+			{
+				if(get_R_busy()==false && get_L_busy()==false)			
+				{
+					break;
+				}	
+			}
+			#endif
+
 			waitCtrSound=0;
-			_delay_ms(500);			
-			SoundPlay(soundNumber++);
 			_delay_ms(500);
+			//SoundPlay(soundNumber++);
+			SoundPlay(rx_char[uart_rx_length - 1]);
+			
+			_delay_ms(500);
+				
+			gSoundPlay=false;
+			uart_rx_length=0;
+
+			
 		}
 
+		testtest++;
 		
-		
-		
-		
-		if(gUartRcvData > 0)
-		{
-			testtest++;
-		}
-		
+		#endif
 		
 		
 	
