@@ -241,7 +241,7 @@ void hw_setup(void)
 
 
 
-	//PORTB = 0x01;	//for yellow LED
+	//PORTB = (1<<PB0) | (1<<PB1);	//for yellow LED
 
 
 
@@ -349,7 +349,7 @@ ISR(TIMER0_COMPA_vect)	//ƒ^ƒCƒ}Š„‚èž‚Ý
 		{	
 			waitCtrSound++;
 			
-			if(waitCtrSound > 5)
+			if(waitCtrSound > 3)
 			{
 				waitCtrSound = -1;
 			}
@@ -430,14 +430,14 @@ void SoundPlay(u8 data)
 
 u8 get_R_busy(void)
 {
-	return (PORTB & 0x01) ? true : false;
+	return (PINB & 0x01) ? true : false;
 }
 
 
 
 u8 get_L_busy(void)
 {
-	return (PORTB & 0x02) ? true : false;
+	return (PINB & 0x02) ? true : false;
 }
 
 
@@ -459,19 +459,21 @@ int main(void)
 
 	sei();
 	
-	
+	PORTC |= (1 << 4);
+	PORTC |= (1 << 5);
 
 	waitCtrSound=0;
+	_delay_ms(500);
 	
     while(1)
     {
 		
-		if(get_R_busy()==false && get_L_busy()==false && waitCtrSound == -1)
+		if(get_R_busy()==false && get_L_busy()==false)
 		{
 			waitCtrSound=0;
-			
+			_delay_ms(500);			
 			SoundPlay(soundNumber++);
-			_delay_ms(100);
+			_delay_ms(500);
 		}
 
 		
