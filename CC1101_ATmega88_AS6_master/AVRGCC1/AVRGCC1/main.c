@@ -233,14 +233,14 @@ void hw_setup(void)
 
 
     DDRC=0x30;      
-	DDRD=0x00;
-	DDRB=0x04;
+	DDRD=0x04;
+	DDRB=0x00;
 
 	/*pull_up*/
 	//PORTC = (1<<PC4) |(1<<PC4);
 	//PORTD = 0xf7; 
 
-
+	PORTD = (1<<PD0); 
 
 
 	//PORTB = (1<<PB0) | (1<<PB1);	//for yellow LED
@@ -463,8 +463,11 @@ int main(void)
 
 	sei();
 	
-	PORTC |= (1 << 4);
-	PORTC |= (1 << 5);
+	PORTC |= (1 << PC4);
+	PORTC |= (1 << PC5);
+	
+	PORTB |= (1 << PB0);
+	PORTB |= (1 << PB1);
 
 	waitCtrSound=0;
 	_delay_ms(500);
@@ -474,7 +477,7 @@ int main(void)
 		#if 1
 
 
-		if(gSoundPlay == 0x01)
+		if(gSoundPlay == true)
 		{
 			#if 1
 			while(1)
@@ -487,11 +490,11 @@ int main(void)
 			#endif
 
 			waitCtrSound=0;
-			_delay_ms(500);
+			//_delay_ms(500);
 			//SoundPlay(soundNumber++);
 			SoundPlay(rx_char[uart_rx_length - 1]);
 			
-			_delay_ms(500);
+			//_delay_ms(500);
 				
 			gSoundPlay=false;
 			uart_rx_length=0;
