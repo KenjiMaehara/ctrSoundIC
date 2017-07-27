@@ -41,11 +41,7 @@
 
 
 #include "macro.h"
-#include "cc1100.h"
-#include "cc1100_globals.h"
 
-#include "spi1.h"
-#include "i2c.h"
 
 
 
@@ -69,10 +65,10 @@ typedef int data_t;				/* データ型 */
 
 
 
-
+#if 0
 #define EEPROM __attribute__((section(".eeprom")))
 save_eeprom_data_t EEPROM save_eeprom_data;
-
+#endif
 
 
 
@@ -82,6 +78,7 @@ u8 uartData;
 volatile int testtest=0;
 volatile int count32MSec=0;
 volatile int count1Sec=0;
+volatile int countBusyCancel=-1;
 int uart_rx_index=0;
 int uart_rx_length=0;
 int ledTest=0;
@@ -89,12 +86,17 @@ int waitCtrSound=-1;
 u8 gSoundPlay = false;
 
 
+#if 0
 
 void putc_(u8 data)
 {
 	while(!(UCSR0A & (1<<UDRE0)));
 	UDR0 = data;
 }
+
+#endif
+
+#if 0
 
 void putb(u8 data)
 {
@@ -104,11 +106,16 @@ void putb(u8 data)
 		putc_('a' + (data-10));
 }
 
+#endif
+
+
+#if 0
 void puthex(u8 data)
 {
 	putb(data/16);
 	putb(data%16);
 }
+#endif
 
 
 u8 putchr2hex(u8 data)
@@ -137,6 +144,7 @@ u8 chr2hex(u8 data_h,u8 data_l)
 }
 
 
+#if 0
 void putstr(u8 * data)
 {
 	int i =0 ;
@@ -147,6 +155,8 @@ void putstr(u8 * data)
 		if(data[i] == 0x0d || data[i] == 0x00) break;
 	}
 }
+
+#endif
 
 
 char asc_to_hex(u8 asc)
@@ -232,7 +242,7 @@ void hw_setup(void)
 
 
 
-    DDRC=0x30;      
+    DDRC=0x30;
 	DDRD=0x04;
 	DDRB=0x00;
 
@@ -271,22 +281,6 @@ ISR(USART_RX_vect)
 		gSoundPlay=true;
 	}
 }
-
-
-ISR(INT1_vect)
-{
-	
-
-
-}
-
-
-ISR(INT0_vect)
-{
-
-}
-
-
 
 
 
@@ -359,9 +353,11 @@ ISR(TIMER0_COMPA_vect)	//タイマ割り込み
 			}
 		}
 		
-		
-		
-		
+		if(countBusyCancel>-1)
+		{
+			countBusyCancel++;
+		}
+
 		
 		count1Sec=0;
 	}
@@ -388,18 +384,23 @@ void SoundPlay(u8 data)
 	int i=0;
 	u8 outData = 0;
 	
+	hw_setup();
+		
 	
-	
-	
-	PORTC |= (1 << 4);
-	_delay_us(10);
-	PORTC |= (1 << 5);
-	_delay_us(10);
+	PORTC |= _BV(PC4);
+	//_delay_us(10);
+	_delay_ms(1);
+	PORTC |= _BV(PC5);
+	//_delay_us(10);
+	_delay_ms(1);
 
-	PORTC &= ~(1 << 4);
-	_delay_us(10);
-	PORTC &= ~(1 << 5);
-	_delay_us(10);
+	PORTC &= ~_BV(PC4);
+	//_delay_us(10);
+	_delay_ms(1);
+	
+	PORTC &= ~_BV(PC5);
+	//_delay_us(10);
+	_delay_ms(1);
 
 	
 	for(i=0;i<8;i++)
@@ -408,25 +409,36 @@ void SoundPlay(u8 data)
 		
 		if(outData & 0x01)
 		{
-			PORTC |= (1 << 4);
+			PORTC |= _BV(PC4);
 		}
 		else
 		{
-			PORTC &= ~(1 << 4);
+			PORTC &= ~_BV(PC4);
 		}
-		_delay_us(10);		
-		PORTC |= (1 << 5);
-		_delay_us(10);
-		PORTC &= ~(1 << 5);
-		_delay_us(10);
+		//_delay_us(10);
+		_delay_ms(1);
+		
+		PORTC |= _BV(PC5);
+		//_delay_us(10);
+		_delay_ms(1);
+		
+		PORTC &= ~_BV(PC5);
+		//_delay_us(10);
+		_delay_ms(1);
 	}
 	
 	
-	_delay_us(10);
-	PORTC |= (1 << 5);
-	_delay_us(10);
-	PORTC |= (1 << 4);
-	_delay_us(10);
+	//_delay_us(10);
+	_delay_ms(1);
+	PORTC |= _BV(PC5);
+	//_delay_us(10);
+	_delay_ms(1);
+	
+	PORTC |= _BV(PC4);
+	//_delay_us(10);
+	_delay_ms(1);
+	
+	
 
 }
 
@@ -450,7 +462,8 @@ u8 get_L_busy(void)
 
 int main(void)
 {
-	u8 soundNumber=0;
+	u8 busySigOut=false;
+	u8 oldBusySigOut=false;
 
 	hw_setup();
 	inituart();
@@ -460,21 +473,24 @@ int main(void)
 
 	//device_status_setup();
 
+	wdt_enable(WDTO_4S);
+	WDTCSR |= (1 << WDIE);
 
 	sei();
 	
-	PORTC |= (1 << PC4);
-	PORTC |= (1 << PC5);
+	PORTC |= _BV(PC4);
+	PORTC |= _BV(PC5);
 	
-	PORTB |= (1 << PB0);
-	PORTB |= (1 << PB1);
+	PORTB |= _BV(PB0);
+	PORTB |= _BV(PB1);
 
 	waitCtrSound=0;
-	_delay_ms(500);
+	_delay_ms(100);
 	
     while(1)
     {
 		#if 1
+		wdt_reset();
 
 
 		if(gSoundPlay == true)
@@ -482,10 +498,19 @@ int main(void)
 			#if 1
 			while(1)
 			{
+				countBusyCancel=0;
+				
 				if(get_R_busy()==false && get_L_busy()==false)			
 				{
+					countBusyCancel=-1;
 					break;
-				}	
+				}
+				
+				if(countBusyCancel > 3)
+				{
+					countBusyCancel=-1;
+					break;
+				}
 			}
 			#endif
 
@@ -501,6 +526,23 @@ int main(void)
 
 			
 		}
+		
+		busySigOut = get_R_busy() | get_L_busy();
+		
+		if(busySigOut != oldBusySigOut)
+		{
+			if(busySigOut == true)
+			{
+				PORTD |= _BV(PD2);
+			}
+			else
+			{
+				PORTD &= ~_BV(PD2);
+			}
+			
+			oldBusySigOut = busySigOut;
+		}
+		
 
 		testtest++;
 		
