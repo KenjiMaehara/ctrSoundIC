@@ -43,7 +43,7 @@
 #include "macro.h"
 
 
-
+#define nop() asm volatile ("nop")
 
 #define SUCCESS     1       /* ê¨å˜ */
 #define FAILURE     0       /* é∏îs */
@@ -63,15 +63,6 @@ typedef int data_t;				/* ÉfÅ[É^å^ */
 
 
 
-
-
-#if 0
-#define EEPROM __attribute__((section(".eeprom")))
-save_eeprom_data_t EEPROM save_eeprom_data;
-#endif
-
-
-
 int	gUartRcvData=-1;
 u8 rx_char[40];
 u8 uartData;
@@ -84,141 +75,41 @@ int uart_rx_length=0;
 int ledTest=0;
 int waitCtrSound=-1;
 u8 gSoundPlay = false;
+u8 busySigOut=false;
+u8 oldBusySigOut=false;
 
 
-#if 0
-
-void putc_(u8 data)
+void myDelay_us(int usec)
 {
-	while(!(UCSR0A & (1<<UDRE0)));
-	UDR0 = data;
-}
-
-#endif
-
-#if 0
-
-void putb(u8 data)
-{
-	if(data < 0x0a)
-		putc_('0' + data);
-	else 
-		putc_('a' + (data-10));
-}
-
-#endif
-
-
-#if 0
-void puthex(u8 data)
-{
-	putb(data/16);
-	putb(data%16);
-}
-#endif
-
-
-u8 putchr2hex(u8 data)
-{
-	u8 tmp;
-
-	if(data&0x60)
-		tmp = data - 0x60;
-	else
-		tmp = data - 0x30;
-
-	return tmp;
-}
-
-
-u8 chr2hex(u8 data_h,u8 data_l)
-{
-	u8 test;
-
-	data_h = putchr2hex(data_h);
-	data_l = putchr2hex(data_l);
+	int i;
 	
-	test=(data_l&0x0F)|((data_h<<4)&0xF0);
-	
-	return test;	
-}
-
-
-#if 0
-void putstr(u8 * data)
-{
-	int i =0 ;
-
-	for( i = 0 ;i < 50 ; i++)
+	for(i=0;i<usec;i++)
 	{
-		putc_(data[i]);
-		if(data[i] == 0x0d || data[i] == 0x00) break;
+		nop();
+		nop();
+		nop();
+		nop();
+		nop();
+		nop();
 	}
 }
 
-#endif
 
 
-char asc_to_hex(u8 asc)
+void myDelay_ms(int usec)
 {
-	if((asc >= '0') && (asc <= '9')) return (asc - '0');
-	else if((asc >= 'A') && (asc <= 'F')) return (asc - 'A' + 0x0a);
-	else if((asc >= 'a') && (asc <= 'f')) return (asc - 'a' + 0x0a);
-	else return 0xff;
-}
-
-u8 AscToHex(char * val)
-{
-	u8 tmp;
+	int i;
 	
-	tmp = asc_to_hex(val[0]) << 4 | asc_to_hex(val[1]);	
-	
-	return tmp;
-}
-
-char asc_to_int(u8 asc)
-{
-	if((asc >= '0') && (asc <= '9')) return (asc - '0');
-	else return 0xff;
-}
-
-int AscToInt(char * val)
-{
-	u8 tmp;
-	
-	tmp = (asc_to_int(val[0]) * 10) +  asc_to_int(val[1]);	
-	
-	return tmp;
+	for(i=0;i<usec;i++)
+	{
+		myDelay_us(250);
+		myDelay_us(250);
+		myDelay_us(250);
+		myDelay_us(250);
+	}
 }
 
 
-char hex_to_asc(u8 hex)
-{
-	char da;
-	da = hex & 0x0f;
-	if((da >= 0) && (da <= 9)) return ('0' + da);
-	else return ('a' + da - 0x0a);
-}
-
-void hexToAsc(u8 hex,u8 * dest)
-{
-	dest[0] = hex_to_asc((hex >> 4 ) & 0x0f);
-	dest[1] = hex_to_asc((hex >> 0 ) & 0x0f);
-}
-
-
-
-u8 my_eeprom_read_byte(u16 addr)
-{
-	eeprom_busy_wait();
-	return eeprom_read_byte((u8 *)addr);
-}
-
-void my_eeprom_read_block(u8 * data,u8 *addr,u16 length)
-{
-	eeprom_busy_wait();
-	return eeprom_read_block(data,addr,length);
-}
 
 
 void inituart(void)
@@ -250,7 +141,7 @@ void hw_setup(void)
 	//PORTC = (1<<PC4) |(1<<PC4);
 	//PORTD = 0xf7; 
 
-	PORTD = (1<<PD0); 
+	PORTD = (1<<PD0) | (1<<PD2); 
 
 
 	//PORTB = (1<<PB0) | (1<<PB1);	//for yellow LED
@@ -405,7 +296,7 @@ void SoundPlay(u8 data)
 	
 	for(i=0;i<8;i++)
 	{
-		outData = (0x01 & (data >> i));
+		outData = (data >> i);
 		
 		if(outData & 0x01)
 		{
@@ -462,8 +353,7 @@ u8 get_L_busy(void)
 
 int main(void)
 {
-	u8 busySigOut=false;
-	u8 oldBusySigOut=false;
+
 
 	hw_setup();
 	inituart();
@@ -495,10 +385,12 @@ int main(void)
 
 		if(gSoundPlay == true)
 		{
+			countBusyCancel=0;
 			#if 1
 			while(1)
 			{
-				countBusyCancel=0;
+				wdt_reset();
+
 				
 				if(get_R_busy()==false && get_L_busy()==false)			
 				{
@@ -506,7 +398,7 @@ int main(void)
 					break;
 				}
 				
-				if(countBusyCancel > 3)
+				if(countBusyCancel > 1)
 				{
 					countBusyCancel=-1;
 					break;
@@ -533,11 +425,11 @@ int main(void)
 		{
 			if(busySigOut == true)
 			{
-				PORTD |= _BV(PD2);
+				PORTD &= ~_BV(PD2);
 			}
 			else
 			{
-				PORTD &= ~_BV(PD2);
+				PORTD |= _BV(PD2);
 			}
 			
 			oldBusySigOut = busySigOut;
