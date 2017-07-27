@@ -53,16 +53,6 @@
 
 typedef int data_t;				/* データ型 */
 
-
-
-//data_t queue_data[QUEUE_SIZE];	/* 待ち行列データ本体 */
-//int queue_head;					/* データ先頭 */
-//int queue_num;					/* データ個数 */
-
-
-
-
-
 int	gUartRcvData=-1;
 u8 rx_char[40];
 u8 uartData;
@@ -175,36 +165,6 @@ ISR(USART_RX_vect)
 
 
 
-
-
-
-
-
-
-
-#if 0
-
-
-void sleep_set(u8 alarm,u8 bo)
-{
-	WDTCSR &= ~(1 << WDIE);
-	wdt_disable();
-	if(bo == 0)
-		rtc_set_next_alarm(alarm);
-
-	cc1100_cmd_idle();
-	cc1100_cmd_pwd();
-
-	spi_signalpin_opendrain_active();
-	EIMSK |= (1<<INT0);
-	sleep_mode();
-	wdt_enable(WDTO_4S);
-	WDTCSR |= (1 << WDIE);
-}
-
-#endif
-
-
 ISR(TIMER0_COMPA_vect)	//タイマ割り込み
 {
 	if(count32MSec > -1)
@@ -275,23 +235,23 @@ void SoundPlay(u8 data)
 	int i=0;
 	u8 outData = 0;
 	
-	hw_setup();
+	//hw_setup();
 		
 	
 	PORTC |= _BV(PC4);
-	//_delay_us(10);
-	_delay_ms(1);
+	_delay_us(10);
+	//_delay_ms(1);
 	PORTC |= _BV(PC5);
-	//_delay_us(10);
-	_delay_ms(1);
+	_delay_us(10);
+	//_delay_ms(1);
 
 	PORTC &= ~_BV(PC4);
-	//_delay_us(10);
-	_delay_ms(1);
+	_delay_us(10);
+	//_delay_ms(1);
 	
 	PORTC &= ~_BV(PC5);
-	//_delay_us(10);
-	_delay_ms(1);
+	_delay_us(10);
+	//_delay_ms(1);
 
 	
 	for(i=0;i<8;i++)
@@ -306,28 +266,28 @@ void SoundPlay(u8 data)
 		{
 			PORTC &= ~_BV(PC4);
 		}
-		//_delay_us(10);
-		_delay_ms(1);
+		_delay_us(10);
+		//_delay_ms(1);
 		
 		PORTC |= _BV(PC5);
-		//_delay_us(10);
-		_delay_ms(1);
+		_delay_us(10);
+		//_delay_ms(1);
 		
 		PORTC &= ~_BV(PC5);
-		//_delay_us(10);
-		_delay_ms(1);
+		_delay_us(10);
+		//_delay_ms(1);
 	}
 	
 	
-	//_delay_us(10);
-	_delay_ms(1);
+	_delay_us(10);
+	//_delay_ms(1);
 	PORTC |= _BV(PC5);
-	//_delay_us(10);
-	_delay_ms(1);
+	_delay_us(10);
+	//_delay_ms(1);
 	
 	PORTC |= _BV(PC4);
-	//_delay_us(10);
-	_delay_ms(1);
+	_delay_us(10);
+	//_delay_ms(1);
 	
 	
 
@@ -406,7 +366,7 @@ int main(void)
 			}
 			#endif
 
-			waitCtrSound=0;
+			//waitCtrSound=0;
 			//_delay_ms(500);
 			//SoundPlay(soundNumber++);
 			SoundPlay(rx_char[uart_rx_length - 1]);
