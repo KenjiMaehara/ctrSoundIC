@@ -65,6 +65,7 @@ int uart_rx_length=0;
 int ledTest=0;
 int waitCtrSound=-1;
 u8 gSoundPlay = false;
+u8 gSoundStop = false;
 u8 busySigOut=false;
 u8 oldBusySigOut=false;
 
@@ -154,12 +155,16 @@ ISR(USART_RX_vect)
 	rx_char[uart_rx_index++] = UDR0;
 
 	//if(rx_char[uart_rx_index]==0x0d)
-	if(rx_char[uart_rx_index - 1]==0xec)
+	if(rx_char[uart_rx_index - 1]==0xec)			//play
 	{
 		uart_rx_length = uart_rx_index - 1;
 		//gUartRcvData = 0;	
 		uart_rx_index = 0;
 		gSoundPlay=true;
+	}
+	else if(rx_char[uart_rx_index - 1]==0xef)		//stop
+	{
+		gSoundStop=true;				
 	}
 }
 
@@ -378,6 +383,14 @@ int main(void)
 
 			
 		}
+		else if(gSoundStop==true)
+		{
+			SoundPlay(0);
+			gSoundStop=false;
+		}
+		
+		
+		
 		
 		busySigOut = get_R_busy() | get_L_busy();
 		
